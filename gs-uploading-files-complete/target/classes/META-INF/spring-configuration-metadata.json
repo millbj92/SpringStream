@@ -1,0 +1,28 @@
+{
+  "hints": [],
+  "groups": [
+    {
+      "sourceType": "hello.GlobalProperties",
+      "name": "",
+      "type": "hello.GlobalProperties"
+    },
+    {
+      "sourceType": "hello.storage.StorageProperties",
+      "name": "storage",
+      "type": "hello.storage.StorageProperties"
+    }
+  ],
+  "properties": [
+    {
+      "sourceType": "hello.GlobalProperties",
+      "name": "root",
+      "type": "java.lang.String"
+    },
+    {
+      "sourceType": "hello.storage.StorageProperties",
+      "name": "storage.location",
+      "description": "Folder location for storing files",
+      "type": "java.lang.String"
+    }
+  ]
+}
