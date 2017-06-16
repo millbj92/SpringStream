@@ -111,7 +111,7 @@ public class MyTrayIcon extends TrayIcon {
         // popup.addSeparator();
         setPopupMenu(popup);
         tray.add(this);
-        
+        this.setImageAutoSize(true);
         
         
     }

@@ -17,6 +17,7 @@ import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBui
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.awt.TrayIcon.MessageType;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -27,10 +28,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Date;
 import java.text.DateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletRequest;
 
 import hello.storage.FileSystemStorageService;
 
@@ -41,6 +45,7 @@ public class FileUploadController {
 
     public StorageService storageService;
     public static Preferences prefs;
+    private DateTimeFormatter formatter;
     
     
     public static void SetRoot(String root)
@@ -53,7 +58,7 @@ public class FileUploadController {
     @Autowired
     public FileUploadController(StorageService storageService) {
     	prefs = Preferences.userRoot().node(this.getClass().getName());
-    	
+    	formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS");
     	String dir = prefs.get("root", "C:\\");
     	
         this.storageService = storageService;
@@ -63,24 +68,24 @@ public class FileUploadController {
     }
 
     @GetMapping("/")
-    public String listUploadedFiles(Model model) throws IOException {
-
+    public String listUploadedFiles(Model model, HttpServletRequest request) throws IOException {
+    	System.out.println(LocalDateTime.now().format(formatter) + "\t\tNew Connection from IP: " + request.getRemoteAddr());
+    	MyTrayIcon.getInstance().displayMessage("Welcome", "Server Started", MessageType.INFO);
         model.addAttribute("files", storageService
                 .loadAll()
                 .map(path ->
                         MvcUriComponentsBuilder
-                                .fromMethodName(FileUploadController.class, "serveFile", path.getFileName().toString())
+                                .fromMethodName(FileUploadController.class, "serveFile", path.getFileName().toString(), request)
                                 .build().toString())
                 .collect(Collectors.toList()));
-        
-        //System.out.println(global.getRoot());
 
         return "uploadForm";
     }
 
     @GetMapping("/files/{filename:.+}")
     @ResponseBody
-    public ResponseEntity<Resource> serveFile(@PathVariable String filename) {
+    public ResponseEntity<Resource> serveFile(@PathVariable String filename, HttpServletRequest request) {
+    	System.out.println(LocalDateTime.now().format(formatter) + "\t\tNew File Download from IP: " + request.getRemoteAddr() + " -- File: " + filename);
         Resource file = storageService.loadAsResource(filename);
         return ResponseEntity
                 .ok()
@@ -90,9 +95,10 @@ public class FileUploadController {
     
    
     @RequestMapping(method = RequestMethod.GET, value = "/videos/{video:.+}")
-    public StreamingResponseBody stream(@PathVariable String video)
+    public StreamingResponseBody stream(@PathVariable String video, HttpServletRequest request)
     		throws FileNotFoundException {
     	try{
+    		System.out.println(LocalDateTime.now().format(formatter) + "\t\tNew Stream Started from IP: " + request.getRemoteAddr() + " -- File: " + video);
     	Resource r = storageService.loadAsResource(video);
     	File videoFile = r.getFile();
     	final InputStream videoFileStream = new FileInputStream(videoFile);
@@ -100,6 +106,7 @@ public class FileUploadController {
     		readAndWrite(videoFileStream, os);
     	};
     	}catch(IOException e){
+    		MyTrayIcon.getInstance().displayMessage("Error", e.getMessage(), MessageType.ERROR);
     		return null;
     	}
     }
@@ -115,8 +122,9 @@ public class FileUploadController {
 	}
     
     @GetMapping("/getfiles")
-    public @ResponseBody ItemResponse getItem(@RequestParam String folder)
+    public @ResponseBody ItemResponse getItem(@RequestParam String folder, HttpServletRequest request)
     {
+    	System.out.println(LocalDateTime.now().format(formatter) + "\t\tNew List File Request from IP: " + request.getRemoteAddr() + " -- Folder: " + folder);
     	//System.out.println("Folder: " + folder.toString());
     	File root;
     	
@@ -189,9 +197,10 @@ public class FileUploadController {
     
     @GetMapping("/makefolder")
     @ResponseBody
-    public String MakeFile(@RequestParam String folder)
+    public String MakeFile(@RequestParam String folder, HttpServletRequest request)
     {
     	try{
+    		System.out.println(LocalDateTime.now().format(formatter) + "\t\tNew Make Folder Request from IP: " + request.getRemoteAddr() + " -- Folder: " + folder);
     		//System.out.println(folder);
     		File f = new File(folder);
     		f.mkdirs();
@@ -204,8 +213,9 @@ public class FileUploadController {
     
     @GetMapping("/deletefile")
     @ResponseBody
-    public String DeleteFolder(@RequestParam String path){
+    public String DeleteFolder(@RequestParam String path, HttpServletRequest request){
     	try{
+    		System.out.println(LocalDateTime.now().format(formatter) + "\t\tNew Delete Folder Request from IP: " + request.getRemoteAddr() + " -- Folder: " + path);
     		File f = new File(path);
     		boolean deleted = FileUtils.deleteQuietly(f);
     		return Boolean.toString(deleted);
@@ -217,8 +227,8 @@ public class FileUploadController {
 
     @PostMapping("/")
     public String handleFileUpload(@RequestParam("file") MultipartFile file,
-                                   RedirectAttributes redirectAttributes) {
-
+                                   RedirectAttributes redirectAttributes, HttpServletRequest request) {
+    	System.out.println(LocalDateTime.now().format(formatter) + "\t\tFile Upload Request from IP: " + request.getRemoteAddr() + " -- File: " + file.getOriginalFilename());
         storageService.store(file);
         redirectAttributes.addFlashAttribute("message",
                 "You successfully uploaded " + file.getOriginalFilename() + "!");
